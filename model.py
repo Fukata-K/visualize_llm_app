@@ -1,13 +1,14 @@
 import pygraphviz as pgv
 import torch
 from transformer_lens import HookedTransformer
+from pathlib import Path
 
 
 def visualize_model(
     model: HookedTransformer,
     base_width: float = 1.5,
     base_height: float = 0.6,
-    filename: str = "model_visualization.svg",
+    filename: str = "figures/model_visualization.svg",
 ):
     """
     モデルのノードとエッジを pygraphviz を使って可視化する関数.
@@ -38,7 +39,9 @@ def visualize_model(
     for edge in edge_list:
         graph.add_edge(edge[0], edge[1])
 
-    # グラフを描画
+    # グラフを描画して保存
+    filename = Path(filename)
+    filename.parent.mkdir(parents=True, exist_ok=True)
     graph.layout(prog="neato")
     graph.draw(filename, format="svg")
 
