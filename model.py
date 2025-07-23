@@ -1,3 +1,4 @@
+import torch
 from transformer_lens import HookedTransformer
 
 
@@ -29,3 +30,25 @@ def create_node_list(model: HookedTransformer) -> list:
     node_list.append("logits")
 
     return node_list
+
+
+def get_cache(
+    model: HookedTransformer,
+    prompt: str,
+) -> tuple[torch.Tensor, dict]:
+    """
+    モデルのキャッシュを取得する関数.
+
+    Args:
+        model (HookedTransformer): Transformer モデルのインスタンス.
+        prompt (str): モデルに入力するプロンプト.
+
+    Returns:
+        tuple[torch.Tensor, dict]: モデルの出力とキャッシュ.
+    """
+    token_ids = model.to_tokens(prompt, prepend_bos=False)
+    print(token_ids)
+    with torch.no_grad():
+        logits, cache = model.run_with_cache(token_ids)
+    cache.model = None
+    return logits, cache
