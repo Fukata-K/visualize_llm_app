@@ -1,14 +1,12 @@
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
-import torch
-from matplotlib.ticker import FormatStrFormatter
+import numpy as np
 from transformer_lens import ActivationCache, HookedTransformer
 from transformer_lens.utils import get_act_name
 
 
-def generate_all_attention_heatmaps(
+def generate_attention_heatmaps(
     model: HookedTransformer,
     cache: dict | ActivationCache,
     prompt: str,
@@ -18,10 +16,10 @@ def generate_all_attention_heatmaps(
     データセットの全レイヤー・全ヘッドについて平均 Attention Pattern の Heatmap を生成・保存する関数.
 
     Args:
-        model (HookedTransformer): トークナイズ用モデル
-        cache (dict | ActivationCache): attention cache
-        prompt (str): プロンプト
-        output_dir (str): 出力ディレクトリのベースパス (default: "out/attention_patterns")
+        model (HookedTransformer): Transformer モデルのインスタンス.
+        cache (dict | ActivationCache): attention cache.
+        prompt (str): モデルに入力するプロンプト.
+        output_dir (str): 出力ディレクトリのベースパス (default: "figures/attention_patterns").
 
     Returns:
         None
@@ -33,164 +31,73 @@ def generate_all_attention_heatmaps(
     # プロンプトのトークン化
     tokens = model.to_str_tokens(prompt, prepend_bos=False)
     tokens = [token.replace(" ", "_") for token in tokens]
+    seq_len = len(tokens)
+    tick_positions = list(range(seq_len))
 
-    # 各レイヤー・ヘッドについて処理
+    # 出力ディレクトリの作成
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    # レイヤーごとにバッチ処理
     for layer in range(num_layers):
+        print(f"Processing Layer {layer}/{num_layers - 1}...")
+
+        # レイヤーの Attention データを一度に取得して numpy 配列に変換
+        layer_key = get_act_name("attn", layer)
+        layer_attn_tensor = cache[layer_key][0]  # [num_heads, seq_len, seq_len]
+        layer_attn = layer_attn_tensor.detach().cpu().numpy()
+
+        # そのレイヤーの全ヘッドを処理
         for head in range(num_heads):
-            # 保存パスの設定
-            save_path = f"{output_dir}/layer{layer:02d}_head{head:02d}.png"
-            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+            save_path = f"{output_dir}/L{layer:02d}_H{head:02d}.png"
+            attn_array = layer_attn[head]  # すでにnumpy配列
 
-            # タイトルの設定
-            title = f"Layer {layer}, Head {head}"
-
-            # Attention Pattern の取得
-            attn_pattern = get_attention_pattern(
-                cache, data_idx=0, layer=layer, head=head, seq_len=len(tokens)
-            )
-
-            # ヒートマップの生成・保存
-            create_attention_heatmap(
-                attn_pattern=attn_pattern,
-                tokens=tokens,
-                title=title,
-                save_path=save_path,
-            )
+            # ヒートマップ作成
+            _create_heatmap(attn_array, layer, head, tokens, tick_positions, save_path)
 
 
-def visualize_attention_from_cache(
-    model: HookedTransformer,
-    cache: dict | ActivationCache,
-    data_idx: int,
+def _create_heatmap(
+    attn_array: np.ndarray,
     layer: int,
     head: int,
-    prompt: str,
-    show: bool = False,
-    save_path: Optional[str] = None,
-) -> plt.Figure:
+    tokens: list,
+    tick_positions: list,
+    save_path: str,
+) -> None:
     """
-    キャッシュから特定のヘッドの attention pattern を可視化する関数.
+    ヒートマップ作成関数
 
     Args:
-        model (HookedTransformer): トークナイズ用モデル
-        cache (dict | ActivationCache): attention cache
-        data_idx (int): バッチ内のデータインデックス
-        layer (int): 層番号
-        head (int): ヘッド番号
-        prompt (str): 元のプロンプト文字列
-        show (bool): 図を表示するかどうか (default: False)
-        save_path (Optional[str]): 保存先パス (None なら保存しない, default: None)
+        attn_array (np.ndarray): attention weight 配列.
+        layer (int): レイヤー番号.
+        head (int): ヘッド番号.
+        tokens (list): トークンリスト.
+        tick_positions (list): 軸の目盛り位置.
+        save_path (str): 保存パス.
 
     Returns:
-        plt.Figure: 作成された図
+        None
     """
-    # トークンの取得
-    tokens = model.to_str_tokens(prompt, prepend_bos=False)
+    # matplotlib 設定の最適化
+    fig, ax = plt.subplots(figsize=(6, 5))
 
-    # attention pattern の取得
-    attn_pattern = get_attention_pattern(
-        cache, data_idx, layer, head, seq_len=len(tokens)
-    )
-
-    # タイトルの作成
-    title = f"Layer {layer}, Head {head} - Attention Pattern"
-
-    # 可視化
-    return create_attention_heatmap(
-        attn_pattern=attn_pattern,
-        tokens=tokens,
-        title=title,
-        show=show,
-        save_path=save_path,
-    )
-
-
-def get_attention_pattern(
-    cache: dict | ActivationCache,
-    data_idx: int,
-    layer: int,
-    head: int,
-    seq_len: int = None,
-) -> torch.Tensor:
-    """
-    指定した cache, data_idx, layer, head から対応する Attention Pattern を取得し，
-    seq_len が指定されていればそのサイズにトリミングして返す関数.
-
-    Args:
-        cache (dict | ActivationCache): transformer_lens の run_with_cache で得られる cache
-        data_idx (int): バッチ内のデータインデックス
-        layer    (int): 層番号 (0始まり)
-        head     (int): ヘッド番号 (0始まり)
-        seq_len (int, optional): トリミング後の系列長 (None なら全体を返す, default: None)
-
-    Returns:
-        torch.Tensor: [seq_len, seq_len] 形式の Attention Pattern
-    """
-    key = get_act_name("attn", layer)
-    attn = cache[key][data_idx, head]
-    if seq_len is not None:
-        return attn[:seq_len, :seq_len]
-    return attn
-
-
-def create_attention_heatmap(
-    attn_pattern: torch.Tensor,
-    tokens: List[str],
-    title: str = "Attention Pattern",
-    figsize: Tuple[int, int] = (10, 8),
-    save_path: Optional[str] = None,
-    font_size: int = 10,
-) -> plt.Figure:
-    """
-    Attention Pattern から Attention Map の画像を作成する関数.
-
-    Args:
-        attn_pattern (torch.Tensor): [seq_len, seq_len] 形式の Attention Pattern
-        tokens (List[str]): seq_len と同じ長さのトークン文字列リスト
-        title (str): 図のタイトル (default: "Attention Pattern")
-        figsize (Tuple[int, int]): 図のサイズ (width, height) (default: (10, 8))
-        save_path (Optional[str]): 保存先パス (None なら保存しない, default: None)
-        font_size (int): フォントサイズ (default: 10)
-
-    Returns:
-        plt.Figure: 作成された matplotlib Figure オブジェクト
-    """
-    # numpy 配列に変換
-    attn_array = attn_pattern.detach().cpu().numpy()
-
-    # 図の作成
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # ヒートマップの作成
-    vmax = attn_array.max()
-    im = ax.imshow(attn_array, cmap="Blues", aspect="equal", vmin=0, vmax=vmax)
+    # イメージ表示
+    im = ax.imshow(attn_array, cmap="Blues", aspect="equal", vmin=0, vmax=1)
 
     # カラーバーの追加
     cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-    cbar.set_label("Attention Weight", fontsize=font_size)
-    cbar.ax.yaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+    cbar.set_label("Attention Weight", fontsize=10)
 
     # 軸ラベルの設定
-    seq_len = attn_pattern.size(0)
-    ax.set_xticks(range(seq_len))
-    ax.set_yticks(range(seq_len))
-    ax.set_xticklabels(tokens, rotation=45, ha="right", fontsize=font_size - 2)
-    ax.set_yticklabels(tokens, fontsize=font_size - 2)
-    ax.set_xlabel("Key (Attended To)", fontsize=font_size)
-    ax.set_ylabel("Query (Attending From)", fontsize=font_size)
+    ax.set_xticks(tick_positions)
+    ax.set_yticks(tick_positions)
+    ax.set_xticklabels(tokens, rotation=45, ha="right", fontsize=8)
+    ax.set_yticklabels(tokens, fontsize=8)
+    ax.set_xlabel("Key (Attended To)", fontsize=10)
+    ax.set_ylabel("Query (Attending From)", fontsize=10)
 
     # タイトル
-    ax.set_title(title, fontsize=font_size + 2, pad=20)
+    ax.set_title(f"Layer {layer}, Head {head}", fontsize=12, pad=20)
 
-    # レイアウトの調整
     plt.tight_layout()
-
-    # 保存
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches="tight")
-        print(f"Attention heatmap saved to: {save_path}")
-
-    # 図を閉じる
-    plt.close(fig)
-
-    return fig
+    plt.savefig(save_path, dpi=100, bbox_inches="tight")
+    plt.close(fig)  # 明示的な figure close
