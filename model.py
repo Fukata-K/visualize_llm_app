@@ -1,7 +1,8 @@
+from pathlib import Path
+
 import pygraphviz as pgv
 import torch
-from transformer_lens import HookedTransformer
-from pathlib import Path
+from transformer_lens import ActivationCache, HookedTransformer
 
 
 def visualize_model(
@@ -162,7 +163,7 @@ def create_edge_list(model: HookedTransformer) -> list:
 def get_cache(
     model: HookedTransformer,
     prompt: str,
-) -> tuple[torch.Tensor, dict]:
+) -> tuple[torch.Tensor, dict | ActivationCache]:
     """
     モデルのキャッシュを取得する関数.
 
@@ -171,7 +172,7 @@ def get_cache(
         prompt (str): モデルに入力するプロンプト.
 
     Returns:
-        tuple[torch.Tensor, dict]: モデルの出力とキャッシュ.
+        tuple[torch.Tensor, dict | ActivationCache]: モデルの出力とキャッシュ.
     """
     token_ids = model.to_tokens(prompt, prepend_bos=False)
     print(token_ids)
@@ -179,12 +180,3 @@ def get_cache(
         logits, cache = model.run_with_cache(token_ids)
     cache.model = None
     return logits, cache
-
-
-# モデルの設定
-model_name = "gpt2-small"
-model = HookedTransformer.from_pretrained(model_name)
-
-visualize_model(
-    model, base_width=1.5, base_height=0.6, filename="model_visualization.svg"
-)
