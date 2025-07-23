@@ -1,3 +1,5 @@
+import base64
+import os
 from pathlib import Path
 
 import pygraphviz as pgv
@@ -30,6 +32,7 @@ def visualize_model(
     model: HookedTransformer,
     filename: str = "figures/graph.svg",
     fillcolors: dict[str, str] = None,
+    use_urls: bool = False,
     base_width: float = 1.5,
     base_height: float = 0.6,
     base_fontsize: float = 24,
@@ -43,6 +46,7 @@ def visualize_model(
         model (HookedTransformer): Transformer モデルのインスタンス.
         filename (str): 出力ファイル名. デフォルトは "figures/graph.svg".
         fillcolors (dict[str, str]): ノードの名前と色のマッピング. デフォルトは None.
+        use_urls (bool): ノードに URL を使用するかどうか. デフォルトは False.
         base_width (float): ノードの基本幅.
         base_height (float): ノードの基本高さ.
         base_fontsize (float): ノードの基本フォントサイズ.
@@ -72,10 +76,15 @@ def visualize_model(
             "l": "#FFD700",  # gold for logits nodes
         }
         fillcolors = {node: (color_map.get(node[0], "#808080")) for node in node_list}
+    if use_urls:
+        urls = _get_url_dict(model)
+    else:
+        urls = {node: "" for node in node_list}
 
     # ノードを追加
     for node in node_list:
         fillcolor = fillcolors.get(node, "#FFFFFF")
+        url = urls.get(node, "")
         pos = _get_node_position(model, node, base_width, base_height)
         graph.add_node(
             node,
@@ -88,6 +97,7 @@ def visualize_model(
             height=base_height,
             fixedsize=True,
             penwidth=node_border_width,
+            URL=url,
             pos=f"{pos[0]},{pos[1]}!",
         )
 
@@ -100,6 +110,36 @@ def visualize_model(
     filename.parent.mkdir(parents=True, exist_ok=True)
     graph.layout(prog="neato")
     graph.draw(filename, format="svg")
+
+
+def _get_url_dict(
+    model: HookedTransformer,
+) -> dict[str, str]:
+    """
+    モデルのノードに対応する URL の辞書を取得する関数.
+
+    Args:
+        model (HookedTransformer): Transformer モデルのインスタンス.
+
+    Returns:
+        dict[str, str]: ノード名と URL のマッピング.
+    """
+    url_dict = {}
+    for node in _create_node_list(model):
+        if node.startswith("a"):
+            layer, head = map(int, node[1:].split(".h"))
+            image_path = f"figures/attention_patterns/L{layer:02d}_H{head:02d}.png"
+            url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
+        else:
+            url_dict[node] = ""
+    return url_dict
+
+
+def _image_to_base64(image_path):
+    if os.path.exists(image_path):
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    return None
 
 
 def _get_node_position(

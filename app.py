@@ -8,7 +8,7 @@ from model import get_cache, visualize_model
 # 初期設定
 st.set_page_config(page_title="Visualize LLM Demo", layout="wide")
 st.title("Visualize LLM Demo")
-model = HookedTransformer.from_pretrained("gpt2-small")
+model = HookedTransformer.from_pretrained("gpt2-small", device="cpu")
 
 # 横並びレイアウト
 col1, col2 = st.columns([4, 1])  # テキスト入力 : ボタン = 4:1 の比率
@@ -39,5 +39,5 @@ if run and prompt:
 
     # モデルの可視化
     output_path = "figures/model_visualization.svg"
-    visualize_model(model, filename=output_path)
+    visualize_model(model, filename=output_path, use_urls=True)
     visualize_svg(output_path, max_height=800)
