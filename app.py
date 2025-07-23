@@ -1,5 +1,7 @@
 import streamlit as st
 
+from display_utils import visualize_svg
+
 # 初期設定
 st.set_page_config(page_title="Visualize LLM Demo", layout="wide")
 
@@ -22,4 +24,5 @@ with col2:
 # ボタンが押されたときだけ処理を実行
 if run and prompt:
     st.success(f"プロンプト: {prompt}")
-    # 以下に処理を記述
+
+    visualize_svg("figures/model_visualization.svg", max_height=800)
