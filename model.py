@@ -5,18 +5,44 @@ import torch
 from transformer_lens import ActivationCache, HookedTransformer
 
 
+def get_cache(
+    model: HookedTransformer,
+    prompt: str,
+) -> tuple[torch.Tensor, dict | ActivationCache]:
+    """
+    モデルのキャッシュを取得する関数.
+
+    Args:
+        model (HookedTransformer): Transformer モデルのインスタンス.
+        prompt (str): モデルに入力するプロンプト.
+
+    Returns:
+        tuple[torch.Tensor, dict | ActivationCache]: モデルの出力とキャッシュ.
+    """
+    token_ids = model.to_tokens(prompt, prepend_bos=False)
+    with torch.no_grad():
+        logits, cache = model.run_with_cache(token_ids)
+    cache.model = None
+    return logits, cache
+
+
 def visualize_model(
     model: HookedTransformer,
     base_width: float = 1.5,
     base_height: float = 0.6,
-    filename: str = "figures/model_visualization.svg",
-):
+    filename: str = "figures/graph.svg",
+) -> None:
     """
     モデルのノードとエッジを pygraphviz を使って可視化する関数.
 
     Args:
         model (HookedTransformer): Transformer モデルのインスタンス.
-        filename (str): 出力ファイル名. デフォルトは "model_visualization.svg".
+        base_width (float): ノードの基本幅.
+        base_height (float): ノードの基本高さ.
+        filename (str): 出力ファイル名. デフォルトは "figures/graph.svg".
+
+    Returns:
+        None
     """
     graph = pgv.AGraph(
         directed=True,
@@ -27,7 +53,7 @@ def visualize_model(
     )
 
     # ノードを追加
-    node_list = create_node_list(model)
+    node_list = _create_node_list(model)
     for node in node_list:
         pos = _get_node_position(model, node, base_width, base_height)
         graph.add_node(
@@ -36,7 +62,7 @@ def visualize_model(
         )
 
     # エッジを追加
-    edge_list = create_edge_list(model)
+    edge_list = _create_edge_list(model)
     for edge in edge_list:
         graph.add_edge(edge[0], edge[1])
 
@@ -95,7 +121,7 @@ def _get_node_position(
         return (0, (n_layers * 2 + 1) * y_spacing)
 
 
-def create_node_list(model: HookedTransformer) -> list:
+def _create_node_list(model: HookedTransformer) -> list:
     """
     pygraphviz で描画する際のノードの名前リストを作成する関数.
 
@@ -103,7 +129,7 @@ def create_node_list(model: HookedTransformer) -> list:
         model (HookedTransformer): Transformer モデルのインスタンス.
 
     Returns:
-        list: ノードの名前リスト. (例: ["input", "a0.h0", "a0.h1", ..., "m0", ..., "logits"]).
+        list: ノードの名前リスト (例: ["input", "a0.h0", "a0.h1", ..., "m0", ..., "logits"]).
     """
     n_layers = model.cfg.n_layers
     n_heads = model.cfg.n_heads
@@ -125,7 +151,7 @@ def create_node_list(model: HookedTransformer) -> list:
     return node_list
 
 
-def create_edge_list(model: HookedTransformer) -> list:
+def _create_edge_list(model: HookedTransformer) -> list:
     """
     pygraphviz で描画する際のエッジのリストを作成する関数.
 
@@ -133,7 +159,7 @@ def create_edge_list(model: HookedTransformer) -> list:
         model (HookedTransformer): Transformer モデルのインスタンス.
 
     Returns:
-        list: エッジのリスト. (例: [("input", "a0.h0"), ("a0.h0", "m0"), ...]).
+        list: エッジのリスト (例: [("input", "a0.h0"), ("a0.h0", "m0"), ...]).
     """
     n_layers = model.cfg.n_layers
     n_heads = model.cfg.n_heads
@@ -158,25 +184,3 @@ def create_edge_list(model: HookedTransformer) -> list:
     edge_list.append((f"m{n_layers - 1}", "logits"))
 
     return edge_list
-
-
-def get_cache(
-    model: HookedTransformer,
-    prompt: str,
-) -> tuple[torch.Tensor, dict | ActivationCache]:
-    """
-    モデルのキャッシュを取得する関数.
-
-    Args:
-        model (HookedTransformer): Transformer モデルのインスタンス.
-        prompt (str): モデルに入力するプロンプト.
-
-    Returns:
-        tuple[torch.Tensor, dict | ActivationCache]: モデルの出力とキャッシュ.
-    """
-    token_ids = model.to_tokens(prompt, prepend_bos=False)
-    print(token_ids)
-    with torch.no_grad():
-        logits, cache = model.run_with_cache(token_ids)
-    cache.model = None
-    return logits, cache

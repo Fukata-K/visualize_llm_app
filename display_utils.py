@@ -3,13 +3,16 @@ import base64
 import streamlit as st
 
 
-def visualize_svg(svg_path: str, max_height: int = 800):
+def visualize_svg(svg_path: str, max_height: int = 800) -> None:
     """
     SVG 画像を Streamlit で表示する関数.
 
     Args:
         svg_path (str): SVG 画像のパス.
         max_height (int): 最大高さ.
+
+    Returns:
+        None
     """
     with open(svg_path, "r") as f:
         svg_content = f.read()
