@@ -28,18 +28,26 @@ def get_cache(
 
 def visualize_model(
     model: HookedTransformer,
+    filename: str = "figures/graph.svg",
+    fillcolors: dict[str, str] = None,
     base_width: float = 1.5,
     base_height: float = 0.6,
-    filename: str = "figures/graph.svg",
+    base_fontsize: float = 24,
+    node_border_width: float = 5.0,
+    edge_width: float = 3.0,
 ) -> None:
     """
     モデルのノードとエッジを pygraphviz を使って可視化する関数.
 
     Args:
         model (HookedTransformer): Transformer モデルのインスタンス.
+        filename (str): 出力ファイル名. デフォルトは "figures/graph.svg".
+        fillcolors (dict[str, str]): ノードの名前と色のマッピング. デフォルトは None.
         base_width (float): ノードの基本幅.
         base_height (float): ノードの基本高さ.
-        filename (str): 出力ファイル名. デフォルトは "figures/graph.svg".
+        base_fontsize (float): ノードの基本フォントサイズ.
+        node_border_width (float): ノードの枠線の幅.
+        edge_width (float): エッジの太さ.
 
     Returns:
         None
@@ -52,19 +60,40 @@ def visualize_model(
         splines="true",
     )
 
-    # ノードを追加
+    # ノード名とエッジ名を取得
     node_list = _create_node_list(model)
+    edge_list = _create_edge_list(model)
+
+    # デフォルト値の設定
+    if fillcolors is None:
+        color_map = {
+            "a": "#FF7777",  # light red for attention nodes
+            "m": "#CCFFCC",  # light green for MLP nodes
+            "l": "#FFD700",  # gold for logits nodes
+        }
+        fillcolors = {node: (color_map.get(node[0], "#808080")) for node in node_list}
+
+    # ノードを追加
     for node in node_list:
+        fillcolor = fillcolors.get(node, "#FFFFFF")
         pos = _get_node_position(model, node, base_width, base_height)
         graph.add_node(
             node,
+            fillcolor=fillcolor,
+            fontname="Helvetica",
+            fontsize=base_fontsize,
+            shape="box",
+            style="filled, rounded",
+            width=base_width,
+            height=base_height,
+            fixedsize=True,
+            penwidth=node_border_width,
             pos=f"{pos[0]},{pos[1]}!",
         )
 
     # エッジを追加
-    edge_list = _create_edge_list(model)
     for edge in edge_list:
-        graph.add_edge(edge[0], edge[1])
+        graph.add_edge(edge[0], edge[1], penwidth=edge_width)
 
     # グラフを描画して保存
     filename = Path(filename)
