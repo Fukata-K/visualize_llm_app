@@ -67,6 +67,28 @@ if run and prompt:
     # 一致チェック
     is_correct = check_answer_correctness(model, prompt, logits, expected_answer)
 
+    # 表示用のプレースホルダーを作成
+    visualization_placeholder = st.empty()
+
+    # 簡易版の HTML コンテンツを生成して表示 (後続の処理を待つ間に表示)
+    init_path = "figures/graph_init.svg"
+    visualize_model(model, filename=init_path, use_urls=False)
+    max_height = 800
+    margin = 20
+    html_content_init = create_svg_html_content(
+        init_path,
+        max_height=max_height,
+        input=prompt,
+        output=output,
+        is_correct=is_correct,
+    )
+
+    # プレースホルダーに簡易版を表示
+    with visualization_placeholder.container():
+        st.components.v1.html(
+            html_content_init, height=max_height + margin, scrolling=False
+        )
+
     # Attention Pattern の生成
     start_time = time.time()
     generate_attention_heatmaps(
@@ -91,14 +113,17 @@ if run and prompt:
     elapsed_time = time.time() - start_time
     print(f"モデルの可視化にかかった時間: {elapsed_time:.2f}秒")
 
-    # HTML コンテンツを生成して表示
-    max_height = 800
-    margin = 20
-    html_content = create_svg_html_content(
+    # 完全版の HTML コンテンツを生成してプレースホルダーを更新
+    html_content_final = create_svg_html_content(
         output_path,
         max_height=max_height,
         input=prompt,
         output=output,
         is_correct=is_correct,
     )
-    st.components.v1.html(html_content, height=max_height + margin, scrolling=False)
+
+    # プレースホルダーに完全版を表示 (簡易版を上書き)
+    with visualization_placeholder.container():
+        st.components.v1.html(
+            html_content_final, height=max_height + margin, scrolling=False
+        )
