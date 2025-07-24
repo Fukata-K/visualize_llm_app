@@ -110,13 +110,13 @@ def visualize_model(
         else:
             fillcolors = {}
             for node in node_list:
-                if node.startswith("a"):
-                    fillcolors[node] = color_map.get(node[0], "#808080")
-                elif node.startswith("m"):
+                if node.startswith("A"):
+                    fillcolors[node] = color_map.get("a", "#808080")
+                elif node.startswith("MLP"):
                     fillcolors[node] = _get_color_from_rank(
                         object_ranks.get(node, vocab_size), valid_rank
                     )
-                elif node == "output":
+                elif node == "Output":
                     fillcolors[node] = _get_color_from_rank(
                         object_ranks.get(node, vocab_size), valid_rank
                     )
@@ -206,8 +206,8 @@ def _get_url_dict(
     """
     url_dict = {}
     for node in _create_node_list(model):
-        if node.startswith("a"):
-            layer, head = map(int, node[1:].split(".h"))
+        if node.startswith("A"):
+            layer, head = map(int, node[1:].split(".H"))
             attention_path = f"figures/attention_patterns/L{layer:02d}_H{head:02d}.png"
             logits_path = f"figures/logits/L{layer:02d}_H{head:02d}.png"
             attention_b64 = _image_to_base64(attention_path)
@@ -215,12 +215,12 @@ def _get_url_dict(
             url_dict[node] = (
                 f"javascript:showDualImages('{attention_b64}', '{logits_b64}', 'Attention Pattern', 'Logits')"
             )
-        elif node.startswith("m"):
-            layer = int(node[1:])
+        elif node.startswith("MLP"):
+            layer = int(node[3:])
             logits_path = f"figures/logits/L{layer:02d}.png"
             logits_b64 = _image_to_base64(logits_path)
             url_dict[node] = f"javascript:showImage('{logits_b64}')"
-        elif node == "output":
+        elif node == "Output":
             logits_path = f"figures/logits/L{model.cfg.n_layers - 1:02d}.png"
             logits_b64 = _image_to_base64(logits_path)
             url_dict[node] = f"javascript:showImage('{logits_b64}')"
@@ -260,12 +260,12 @@ def _get_node_position(
     n_layers = model.cfg.n_layers
     n_heads = model.cfg.n_heads
 
-    if node_name == "input":
+    if node_name == "Input":
         return (0, 0)  # Input を基準点とする
 
-    elif node_name.startswith("a"):
+    elif node_name.startswith("A"):
         layer = int(node_name[1:].split(".")[0])
-        head = int(node_name.split(".h")[1])
+        head = int(node_name.split(".H")[1])
         # Input を中央に配置するため Head を中央からの相対位置として計算
         # ノード幅の間隔を使用
         x = (head - (n_heads - 1) / 2) * x_spacing
@@ -273,13 +273,13 @@ def _get_node_position(
         y = (layer * 2 + 1) * y_spacing
         return (x, y)
 
-    elif node_name.startswith("m"):
-        layer = int(node_name[1:])
+    elif node_name.startswith("MLP"):
+        layer = int(node_name[3:])
         # MLP 層：layer * 2 + 2 の位置 (各 layer 内で Attention の後)
         y = (layer * 2 + 2) * y_spacing
         return (0, y)
 
-    elif node_name == "output":
+    elif node_name == "Output":
         # 最終層の後に配置 (少し間隔を広めに取る)
         return (0, (n_layers * 2 + 2) * y_spacing)
 
@@ -292,7 +292,7 @@ def _create_node_list(model: HookedTransformer) -> list:
         model (HookedTransformer): Transformer モデルのインスタンス.
 
     Returns:
-        list: ノードの名前リスト (例: ["input", "a0.h0", "a0.h1", ..., "m0", ..., "output"]).
+        list: ノードの名前リスト (例: ["Input", "A0.H0", "A0.H1", ..., "MLP0", ..., "Output"]).
     """
     n_layers = model.cfg.n_layers
     n_heads = model.cfg.n_heads
@@ -300,16 +300,16 @@ def _create_node_list(model: HookedTransformer) -> list:
     node_list = []
 
     # Input ノード
-    node_list.append("input")
+    node_list.append("Input")
 
     # Attention Head と MLP
     for layer in range(n_layers):
         for head in range(n_heads):
-            node_list.append(f"a{layer}.h{head}")
-        node_list.append(f"m{layer}")
+            node_list.append(f"A{layer}.H{head}")
+        node_list.append(f"MLP{layer}")
 
     # Output ノード
-    node_list.append("output")
+    node_list.append("Output")
 
     return node_list
 
@@ -322,7 +322,7 @@ def _create_edge_list(model: HookedTransformer) -> list:
         model (HookedTransformer): Transformer モデルのインスタンス.
 
     Returns:
-        list: エッジのリスト (例: [("input", "a0.h0"), ("a0.h0", "m0"), ...]).
+        list: エッジのリスト (例: [("Input", "A0.H0"), ("A0.H0", "MLP0"), ...]).
     """
     n_layers = model.cfg.n_layers
     n_heads = model.cfg.n_heads
@@ -331,19 +331,19 @@ def _create_edge_list(model: HookedTransformer) -> list:
 
     # Input から最初の Attention Head へのエッジ
     for head in range(n_heads):
-        edge_list.append(("input", f"a0.h{head}"))
+        edge_list.append(("Input", f"A0.H{head}"))
 
     # Attention Head から MLP へのエッジ
     for layer in range(n_layers):
         for head in range(n_heads):
-            edge_list.append((f"a{layer}.h{head}", f"m{layer}"))
+            edge_list.append((f"A{layer}.H{head}", f"MLP{layer}"))
 
     # MLP から次の Attention Head へのエッジ
     for layer in range(n_layers - 1):
         for head in range(n_heads):
-            edge_list.append((f"m{layer}", f"a{layer + 1}.h{head}"))
+            edge_list.append((f"MLP{layer}", f"A{layer + 1}.H{head}"))
 
     # MLP から output へのエッジ
-    edge_list.append((f"m{n_layers - 1}", "output"))
+    edge_list.append((f"MLP{n_layers - 1}", "Output"))
 
     return edge_list

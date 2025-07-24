@@ -1,5 +1,3 @@
-import time
-
 import streamlit as st
 from transformer_lens import HookedTransformer
 
@@ -20,41 +18,55 @@ st.set_page_config(page_title="Visualize LLM Demo", layout="wide")
 st.title("Visualize LLM Demo")
 model = load_model()
 
-# 横並びレイアウト
-col1, col2, col3 = st.columns([4, 1, 1])  # テキスト入力 : Go : Random = 4:1:1 の比率
-
-# Random ボタンが押された時の処理
+# セッション状態の初期化
 if "random_prompt" not in st.session_state:
     st.session_state.random_prompt = ""
 if "random_answer" not in st.session_state:
     st.session_state.random_answer = ""
 
-with col3:
-    if st.button("Random"):
+st.markdown("---")
+
+# プロンプト入力エリア (プロンプト + Random ボタン)
+prompt_col1, prompt_col2 = st.columns([4, 1])
+
+with prompt_col1:
+    prompt = st.text_input(
+        label="📝 プロンプト入力（英語推奨 / 迷ったら Random Sample をクリック 👉️）",
+        placeholder="例：Sendai is located in the country of",
+        value=st.session_state.random_prompt,
+        help="モデルに入力する文章を記入してください",
+    )
+
+with prompt_col2:
+    st.markdown("<br>", unsafe_allow_html=True)  # ラベル分のスペース調整
+    if st.button(
+        "🎲 Random Sample",
+        help="ランダムなプロンプトと答えのペアを生成",
+        use_container_width=True,
+    ):
         prompt_text, answer_text = get_random_prompt()
         st.session_state.random_prompt = prompt_text
         st.session_state.random_answer = answer_text
         st.rerun()
 
-with col1:
-    prompt = st.text_input(
-        label="プロンプト入力",
-        placeholder="プロンプトを入力してください（例：Sendai is located in the country of）",
-        label_visibility="collapsed",
-        value=st.session_state.random_prompt,
+# 答え入力エリア (答え + Go ボタン)
+answer_col1, answer_col2 = st.columns([4, 1])
+
+with answer_col1:
+    expected_answer = st.text_input(
+        label="✅ 期待される答え（プロンプトの次の単語 / 入力したら Go をクリック 🚀）",
+        placeholder="例：Japan",
+        value=st.session_state.random_answer,
+        help="このプロンプトに対してモデルが出力すると期待される答えを入力してください",
     )
 
-with col2:
-    run = st.button("Go")
+with answer_col2:
+    st.markdown("<br>", unsafe_allow_html=True)  # ラベル分のスペース調整
+    run = st.button(
+        "🚀 Go", help="分析を開始", use_container_width=True, type="primary"
+    )
 
-# 答え入力エリア
-expected_answer = st.text_input(
-    label="答え",
-    placeholder="プロンプトに対応する答えを入力してください（例：Japan）",
-    label_visibility="collapsed",
-    help="このプロンプトに対してモデルが出力すると期待される答えを入力してください",
-    value=st.session_state.random_answer,
-)
+st.markdown("---")
 
 # ボタンが押されたときだけ処理を実行
 if run and prompt:
@@ -74,7 +86,6 @@ if run and prompt:
         prompt=prompt,
         object=expected_answer,
     )
-    print(object_ranks)
 
     # 表示用のプレースホルダーを作成
     visualization_placeholder = st.empty()
@@ -84,7 +95,7 @@ if run and prompt:
     visualize_model(
         model, filename=init_path, use_urls=False, object_ranks=object_ranks
     )
-    max_height = 800
+    max_height = 1000
     margin = 20
     html_content_init = create_svg_html_content(
         init_path,
@@ -101,30 +112,21 @@ if run and prompt:
         )
 
     # Attention Pattern の生成
-    start_time = time.time()
     generate_attention_heatmaps(
         model=model,
         cache=cache,
         prompt=prompt,
         output_dir="figures/attention_patterns",
     )
-    elapsed_time = time.time() - start_time
-    print(f"Attention Pattern の生成にかかった時間: {elapsed_time:.2f}秒")
 
     # logits の可視化
-    start_time = time.time()
     save_all_logits_figures(model, cache)
-    elapsed_time = time.time() - start_time
-    print(f"Logits の可視化にかかった時間: {elapsed_time:.2f}秒")
 
     # モデルの可視化
-    start_time = time.time()
     output_path = "figures/model_visualization.svg"
     visualize_model(
         model, filename=output_path, use_urls=True, object_ranks=object_ranks
     )
-    elapsed_time = time.time() - start_time
-    print(f"モデルの可視化にかかった時間: {elapsed_time:.2f}秒")
 
     # 完全版の HTML コンテンツを生成してプレースホルダーを更新
     html_content_final = create_svg_html_content(

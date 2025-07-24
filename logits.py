@@ -111,13 +111,13 @@ def calculate_all_logits_object_rank(
     # 各層の logits からオブジェクトの順位を計算
     n_layers = model.cfg.n_layers
     n_heads = model.cfg.n_heads
-    ranks["input"] = model.cfg.d_vocab  # Input ノードの順位は vocab サイズ
+    ranks["Input"] = model.cfg.d_vocab  # Input ノードの順位は vocab サイズ
     for layer_idx in range(n_layers):
         layer_logit = layer_logits[layer_idx]
         # 降順でソートしてオブジェクトの順位を取得
         sorted_indices = torch.argsort(layer_logit, descending=True)
         rank = (sorted_indices == object_token_id).nonzero(as_tuple=True)[0].item() + 1
-        ranks[f"m{layer_idx}"] = rank
+        ranks[f"MLP{layer_idx}"] = rank
 
         # 各ヘッドの logits からオブジェクトの順位を計算
         for head_idx in range(n_heads):
@@ -125,8 +125,8 @@ def calculate_all_logits_object_rank(
             sorted_indices = torch.argsort(head_logit, descending=True)
             rank = (sorted_indices == object_token_id).nonzero(as_tuple=True)[0]
             rank = rank.item() + 1
-            ranks[f"a{layer_idx}.h{head_idx}"] = rank
-    ranks["output"] = ranks[f"m{n_layers - 1}"]  # Output ノードの順位は最終層の出力
+            ranks[f"A{layer_idx}.H{head_idx}"] = rank
+    ranks["Output"] = ranks[f"MLP{n_layers - 1}"]  # Output ノードの順位は最終層の出力
 
     return ranks
 
