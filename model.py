@@ -10,6 +10,7 @@ from transformer_lens import ActivationCache, HookedTransformer
 def get_cache(
     model: HookedTransformer,
     prompt: str,
+    device: torch.device = torch.device("cpu"),
 ) -> tuple[torch.Tensor, dict | ActivationCache]:
     """
     モデルのキャッシュを取得する関数.
@@ -17,11 +18,12 @@ def get_cache(
     Args:
         model (HookedTransformer): Transformer モデルのインスタンス.
         prompt (str): モデルに入力するプロンプト.
+        device (torch.device): 使用するデバイス (デフォルトは CPU).
 
     Returns:
         tuple[torch.Tensor, dict | ActivationCache]: モデルの出力とキャッシュ.
     """
-    token_ids = model.to_tokens(prompt, prepend_bos=False)
+    token_ids = model.to_tokens(prompt, prepend_bos=False).to(device)
     with torch.no_grad():
         logits, cache = model.run_with_cache(token_ids)
     cache.model = None

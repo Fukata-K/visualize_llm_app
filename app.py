@@ -1,4 +1,5 @@
 import streamlit as st
+import torch
 from transformer_lens import HookedTransformer
 
 from attention_pattern import generate_attention_heatmaps
@@ -8,7 +9,8 @@ from model import get_cache, get_output, visualize_model
 # 初期設定
 st.set_page_config(page_title="Visualize LLM Demo", layout="wide")
 st.title("Visualize LLM Demo")
-model = HookedTransformer.from_pretrained("gpt2-small", device="cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = HookedTransformer.from_pretrained("gpt2-small", device=device)
 
 # 横並びレイアウト
 col1, col2 = st.columns([4, 1])  # テキスト入力 : ボタン = 4:1 の比率
@@ -26,7 +28,7 @@ with col2:
 # ボタンが押されたときだけ処理を実行
 if run and prompt:
     # モデルのキャッシュと logits を取得
-    logits, cache = get_cache(model, prompt)
+    logits, cache = get_cache(model, prompt, device=device)
 
     # モデルの出力を取得
     output = get_output(model, logits)
