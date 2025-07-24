@@ -7,6 +7,7 @@ from attention_pattern import generate_attention_heatmaps
 from display_utils import create_svg_html_content
 from logits import save_all_logits_figures
 from model import get_cache, get_output, visualize_model
+from prompt import get_random_prompt
 
 
 @st.cache_resource
@@ -20,13 +21,23 @@ st.title("Visualize LLM Demo")
 model = load_model()
 
 # 横並びレイアウト
-col1, col2 = st.columns([4, 1])  # テキスト入力 : ボタン = 4:1 の比率
+col1, col2, col3 = st.columns([4, 1, 1])  # テキスト入力 : Go : Random = 4:1:1 の比率
+
+# Random ボタンが押された時の処理
+if "random_prompt" not in st.session_state:
+    st.session_state.random_prompt = ""
+
+with col3:
+    if st.button("Random"):
+        st.session_state.random_prompt = get_random_prompt()
+        st.rerun()
 
 with col1:
     prompt = st.text_input(
         label="プロンプト入力",
         placeholder="プロンプトを入力してください（例：Sendai is located in the country of）",
         label_visibility="collapsed",
+        value=st.session_state.random_prompt,
     )
 
 with col2:
