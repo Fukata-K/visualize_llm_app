@@ -1,9 +1,12 @@
+import time
+
 import streamlit as st
 import torch
 from transformer_lens import HookedTransformer
 
 from attention_pattern import generate_attention_heatmaps
-from display_utils import create_svg_html_content
+from display_utils import combine_attention_map_and_logits, create_svg_html_content
+from logits import save_all_logits_figures
 from model import get_cache, get_output, visualize_model
 
 # 初期設定
@@ -31,19 +34,46 @@ if run and prompt:
     logits, cache = get_cache(model, prompt, device=device)
 
     # モデルの出力を取得
+    start_time = time.time()
     output = get_output(model, logits)
+    elapsed_time = time.time() - start_time
+    print(f"出力生成にかかった時間: {elapsed_time:.2f}秒")
 
     # Attention Pattern の生成
+    start_time = time.time()
     generate_attention_heatmaps(
         model=model,
         cache=cache,
         prompt=prompt,
         output_dir="figures/attention_patterns",
     )
+    elapsed_time = time.time() - start_time
+    print(f"Attention Pattern の生成にかかった時間: {elapsed_time:.2f}秒")
+
+    # logits の可視化
+    start_time = time.time()
+    save_all_logits_figures(model, cache)
+    elapsed_time = time.time() - start_time
+    print(f"Logits の可視化にかかった時間: {elapsed_time:.2f}秒")
+
+    # Attention Map と Logits の結合
+    start_time = time.time()
+    combine_attention_map_and_logits(
+        model=model,
+        attention_dir="figures/attention_patterns",
+        logits_dir="figures/logits",
+        output_dir="figures/combined",
+        target_height=500,
+    )
+    elapsed_time = time.time() - start_time
+    print(f"Attention Map と Logits の結合にかかった時間: {elapsed_time:.2f}秒")
 
     # モデルの可視化
+    start_time = time.time()
     output_path = "figures/model_visualization.svg"
     visualize_model(model, filename=output_path, use_urls=True)
+    elapsed_time = time.time() - start_time
+    print(f"モデルの可視化にかかった時間: {elapsed_time:.2f}秒")
 
     # HTML コンテンツを生成して表示
     max_height = 800

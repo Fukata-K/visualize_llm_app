@@ -145,7 +145,14 @@ def _get_url_dict(
     for node in _create_node_list(model):
         if node.startswith("a"):
             layer, head = map(int, node[1:].split(".h"))
-            image_path = f"figures/attention_patterns/L{layer:02d}_H{head:02d}.png"
+            image_path = f"figures/combined/L{layer:02d}_H{head:02d}.png"
+            url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
+        elif node.startswith("m"):
+            layer = int(node[1:])
+            image_path = f"figures/combined/L{layer:02d}.png"
+            url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
+        elif node == "logits":
+            image_path = f"figures/combined/L{model.cfg.n_layers - 1:02d}.png"
             url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
         else:
             url_dict[node] = ""
