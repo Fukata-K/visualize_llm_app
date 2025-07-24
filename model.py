@@ -53,7 +53,7 @@ def visualize_model(
     base_width: float = 1.5,
     base_height: float = 0.6,
     base_fontsize: float = 24,
-    node_border_width: float = 5.0,
+    node_border_width: float = 7.5,
     edge_width: float = 3.0,
 ) -> None:
     """
@@ -76,7 +76,7 @@ def visualize_model(
     graph = pgv.AGraph(
         directed=True,
         layout="neato",
-        bgcolor="#FFFFFF",
+        bgcolor="#000000",
         overlap="true",
         splines="true",
     )
@@ -89,8 +89,8 @@ def visualize_model(
     if fillcolors is None:
         color_map = {
             "a": "#FF7777",  # light red for attention nodes
-            "m": "#CCFFCC",  # light green for MLP nodes
-            "l": "#FFD700",  # gold for logits nodes
+            "m": "#77FF77",  # light green for MLP nodes
+            "o": "#FF7700",  # gold for output nodes
         }
         fillcolors = {node: (color_map.get(node[0], "#808080")) for node in node_list}
     if use_urls:
@@ -105,6 +105,7 @@ def visualize_model(
         pos = _get_node_position(model, node, base_width, base_height)
         graph.add_node(
             node,
+            color="#FFFFFF",
             fillcolor=fillcolor,
             fontname="Helvetica",
             fontsize=base_fontsize,
@@ -120,7 +121,7 @@ def visualize_model(
 
     # エッジを追加
     for edge in edge_list:
-        graph.add_edge(edge[0], edge[1], penwidth=edge_width)
+        graph.add_edge(edge[0], edge[1], penwidth=edge_width, color="#FFFFFF")
 
     # グラフを描画して保存
     filename = Path(filename)
@@ -151,7 +152,7 @@ def _get_url_dict(
             layer = int(node[1:])
             image_path = f"figures/combined/L{layer:02d}.png"
             url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
-        elif node == "logits":
+        elif node == "output":
             image_path = f"figures/combined/L{model.cfg.n_layers - 1:02d}.png"
             url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
         else:
@@ -209,9 +210,9 @@ def _get_node_position(
         y = (layer * 2 + 2) * y_spacing
         return (0, y)
 
-    elif node_name == "logits":
-        # 最終層の後に配置
-        return (0, (n_layers * 2 + 1) * y_spacing)
+    elif node_name == "output":
+        # 最終層の後に配置 (少し間隔を広めに取る)
+        return (0, (n_layers * 2 + 2) * y_spacing)
 
 
 def _create_node_list(model: HookedTransformer) -> list:
@@ -222,7 +223,7 @@ def _create_node_list(model: HookedTransformer) -> list:
         model (HookedTransformer): Transformer モデルのインスタンス.
 
     Returns:
-        list: ノードの名前リスト (例: ["input", "a0.h0", "a0.h1", ..., "m0", ..., "logits"]).
+        list: ノードの名前リスト (例: ["input", "a0.h0", "a0.h1", ..., "m0", ..., "output"]).
     """
     n_layers = model.cfg.n_layers
     n_heads = model.cfg.n_heads
@@ -239,7 +240,7 @@ def _create_node_list(model: HookedTransformer) -> list:
         node_list.append(f"m{layer}")
 
     # Output ノード
-    node_list.append("logits")
+    node_list.append("output")
 
     return node_list
 
@@ -273,7 +274,7 @@ def _create_edge_list(model: HookedTransformer) -> list:
         for head in range(n_heads):
             edge_list.append((f"m{layer}", f"a{layer + 1}.h{head}"))
 
-    # MLP から logits へのエッジ
-    edge_list.append((f"m{n_layers - 1}", "logits"))
+    # MLP から output へのエッジ
+    edge_list.append((f"m{n_layers - 1}", "output"))
 
     return edge_list
