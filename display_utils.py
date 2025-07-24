@@ -1,16 +1,17 @@
-import streamlit as st
-
-
-def visualize_svg(svg_path: str, max_height: int = 800) -> None:
+def create_svg_html_content(
+    svg_path: str, max_height: int = 800, input: str = None, output: str = None
+) -> str:
     """
-    SVG 画像を Streamlit で表示する関数.
+    SVG 画像と入出力テキストを含む HTML コンテンツを生成する関数.
 
     Args:
         svg_path (str): SVG 画像のパス.
         max_height (int): 最大高さ.
+        input (str): 入力テキスト (SVG 画像の下に表示).
+        output (str): 出力テキスト (SVG 画像の上に表示).
 
     Returns:
-        None
+        str: HTML コンテンツの文字列.
     """
     # SVG ファイルを読み込み
     with open(svg_path, "r", encoding="utf-8") as f:
@@ -21,27 +22,58 @@ def visualize_svg(svg_path: str, max_height: int = 800) -> None:
     <div style="
         width: 100%;
         height: {max_height}px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
         border: 1px solid #000000;
         border-radius: 4px;
         background-color: #000000;
-        padding: 5px;
+        padding: 10px;
         box-sizing: border-box;
-        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
     ">
-        <div id="svgContainer" style="
+        <!-- 出力テキスト (上部) -->
+        <div style="
             width: 100%;
-            height: 100%;
-            max-width: 100%;
-            max-height: 100%;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 5px 0;
+            background-color: #000000;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            {"display: block;" if output else "display: none;"}
+        ">
+            出力：{output if output else ""}
+        </div>
+
+        <!-- SVG 画像 (中央) -->
+        <div id="svgContainer" style="
+            flex: 1;
+            width: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
-            object-fit: contain;
+            overflow: auto;
         ">
             {svg_content.replace("<svg", '<svg style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;" preserveAspectRatio="xMidYMid meet"')}
+        </div>
+
+        <!-- 入力テキスト (下部) -->
+        <div style="
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 5px 0;
+            background-color: #000000;
+            border-radius: 4px;
+            margin-top: 10px;
+            {"display: block;" if input else "display: none;"}
+        ">
+            入力：{input if input else ""}
         </div>
     </div>
 
@@ -154,5 +186,4 @@ def visualize_svg(svg_path: str, max_height: int = 800) -> None:
     </script>
     """
 
-    # 画像が見切れるのを防ぐために, コンテナサイズにマージンを追加
-    st.components.v1.html(html_content, height=max_height + 20, scrolling=False)
+    return html_content

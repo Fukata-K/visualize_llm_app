@@ -2,8 +2,8 @@ import streamlit as st
 from transformer_lens import HookedTransformer
 
 from attention_pattern import generate_attention_heatmaps
-from display_utils import visualize_svg
-from model import get_cache, visualize_model
+from display_utils import create_svg_html_content
+from model import get_cache, get_output, visualize_model
 
 # 初期設定
 st.set_page_config(page_title="Visualize LLM Demo", layout="wide")
@@ -16,7 +16,7 @@ col1, col2 = st.columns([4, 1])  # テキスト入力 : ボタン = 4:1 の比�
 with col1:
     prompt = st.text_input(
         label="プロンプト入力",
-        placeholder="プロンプトを入力してください（例：A teacher typically works at a）",
+        placeholder="プロンプトを入力してください（例：Sendai is located in the country of）",
         label_visibility="collapsed",
     )
 
@@ -25,9 +25,11 @@ with col2:
 
 # ボタンが押されたときだけ処理を実行
 if run and prompt:
-    st.success(f"プロンプト: {prompt}")
-
+    # モデルのキャッシュと logits を取得
     logits, cache = get_cache(model, prompt)
+
+    # モデルの出力を取得
+    output = get_output(model, logits)
 
     # Attention Pattern の生成
     generate_attention_heatmaps(
@@ -40,4 +42,11 @@ if run and prompt:
     # モデルの可視化
     output_path = "figures/model_visualization.svg"
     visualize_model(model, filename=output_path, use_urls=True)
-    visualize_svg(output_path, max_height=800)
+
+    # HTML コンテンツを生成して表示
+    max_height = 800
+    margin = 20
+    html_content = create_svg_html_content(
+        output_path, max_height=max_height, input=prompt, output=output
+    )
+    st.components.v1.html(html_content, height=max_height + margin, scrolling=False)

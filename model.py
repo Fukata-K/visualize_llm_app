@@ -28,6 +28,21 @@ def get_cache(
     return logits, cache
 
 
+def get_output(model: HookedTransformer, logits: torch.Tensor) -> str:
+    """
+    モデルの出力を取得する関数.
+    ここでは, logits の最後のトークン位置の top1 トークンを取得して文字列に変換する.
+
+    Args:
+        logits (torch.Tensor): モデルの出力ロジット.
+
+    Returns:
+        str: 予測された次のトークン文字列.
+    """
+    top1_token_id = logits[0, -1].argmax().item()
+    return model.to_string(top1_token_id)
+
+
 def visualize_model(
     model: HookedTransformer,
     filename: str = "figures/graph.svg",
