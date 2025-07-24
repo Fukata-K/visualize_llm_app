@@ -5,7 +5,7 @@ import torch
 from transformer_lens import HookedTransformer
 
 from attention_pattern import generate_attention_heatmaps
-from display_utils import combine_attention_map_and_logits, create_svg_html_content
+from display_utils import create_svg_html_content
 from logits import save_all_logits_figures
 from model import get_cache, get_output, visualize_model
 
@@ -55,18 +55,6 @@ if run and prompt:
     save_all_logits_figures(model, cache)
     elapsed_time = time.time() - start_time
     print(f"Logits の可視化にかかった時間: {elapsed_time:.2f}秒")
-
-    # Attention Map と Logits の結合
-    start_time = time.time()
-    combine_attention_map_and_logits(
-        model=model,
-        attention_dir="figures/attention_patterns",
-        logits_dir="figures/logits",
-        output_dir="figures/combined",
-        target_height=500,
-    )
-    elapsed_time = time.time() - start_time
-    print(f"Attention Map と Logits の結合にかかった時間: {elapsed_time:.2f}秒")
 
     # モデルの可視化
     start_time = time.time()

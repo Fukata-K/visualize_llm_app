@@ -146,15 +146,22 @@ def _get_url_dict(
     for node in _create_node_list(model):
         if node.startswith("a"):
             layer, head = map(int, node[1:].split(".h"))
-            image_path = f"figures/combined/L{layer:02d}_H{head:02d}.png"
-            url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
+            attention_path = f"figures/attention_patterns/L{layer:02d}_H{head:02d}.png"
+            logits_path = f"figures/logits/L{layer:02d}_H{head:02d}.png"
+            attention_b64 = _image_to_base64(attention_path)
+            logits_b64 = _image_to_base64(logits_path)
+            url_dict[node] = (
+                f"javascript:showDualImages('{attention_b64}', '{logits_b64}', 'Attention Pattern', 'Logits')"
+            )
         elif node.startswith("m"):
             layer = int(node[1:])
-            image_path = f"figures/combined/L{layer:02d}.png"
-            url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
+            logits_path = f"figures/logits/L{layer:02d}.png"
+            logits_b64 = _image_to_base64(logits_path)
+            url_dict[node] = f"javascript:showImage('{logits_b64}')"
         elif node == "output":
-            image_path = f"figures/combined/L{model.cfg.n_layers - 1:02d}.png"
-            url_dict[node] = f"javascript:showImage('{_image_to_base64(image_path)}')"
+            logits_path = f"figures/logits/L{model.cfg.n_layers - 1:02d}.png"
+            logits_b64 = _image_to_base64(logits_path)
+            url_dict[node] = f"javascript:showImage('{logits_b64}')"
         else:
             url_dict[node] = ""
     return url_dict
