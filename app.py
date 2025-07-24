@@ -7,7 +7,7 @@ from attention_pattern import generate_attention_heatmaps
 from display_utils import create_svg_html_content
 from logits import save_all_logits_figures
 from model import get_cache, get_output, visualize_model
-from prompt import get_random_prompt
+from prompt import check_answer_correctness, get_random_prompt
 
 
 @st.cache_resource
@@ -26,10 +26,14 @@ col1, col2, col3 = st.columns([4, 1, 1])  # テキスト入力 : Go : Random = 4
 # Random ボタンが押された時の処理
 if "random_prompt" not in st.session_state:
     st.session_state.random_prompt = ""
+if "random_answer" not in st.session_state:
+    st.session_state.random_answer = ""
 
 with col3:
     if st.button("Random"):
-        st.session_state.random_prompt = get_random_prompt()
+        prompt_text, answer_text = get_random_prompt()
+        st.session_state.random_prompt = prompt_text
+        st.session_state.random_answer = answer_text
         st.rerun()
 
 with col1:
@@ -43,16 +47,25 @@ with col1:
 with col2:
     run = st.button("Go")
 
+# 答え入力エリア
+expected_answer = st.text_input(
+    label="答え",
+    placeholder="プロンプトに対応する答えを入力してください（例：Japan）",
+    label_visibility="collapsed",
+    help="このプロンプトに対してモデルが出力すると期待される答えを入力してください",
+    value=st.session_state.random_answer,
+)
+
 # ボタンが押されたときだけ処理を実行
 if run and prompt:
     # モデルのキャッシュと logits を取得
     logits, cache = get_cache(model, prompt)
 
     # モデルの出力を取得
-    start_time = time.time()
     output = get_output(model, logits)
-    elapsed_time = time.time() - start_time
-    print(f"出力生成にかかった時間: {elapsed_time:.2f}秒")
+
+    # 一致チェック
+    is_correct = check_answer_correctness(model, prompt, logits, expected_answer)
 
     # Attention Pattern の生成
     start_time = time.time()
@@ -82,6 +95,10 @@ if run and prompt:
     max_height = 800
     margin = 20
     html_content = create_svg_html_content(
-        output_path, max_height=max_height, input=prompt, output=output
+        output_path,
+        max_height=max_height,
+        input=prompt,
+        output=output,
+        is_correct=is_correct,
     )
     st.components.v1.html(html_content, height=max_height + margin, scrolling=False)

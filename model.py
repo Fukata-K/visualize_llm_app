@@ -34,6 +34,7 @@ def get_output(model: HookedTransformer, logits: torch.Tensor) -> str:
     ここでは, logits の最後のトークン位置の top1 トークンを取得して文字列に変換する.
 
     Args:
+        model (HookedTransformer): Transformer モデルのインスタンス.
         logits (torch.Tensor): モデルの出力ロジット.
 
     Returns:

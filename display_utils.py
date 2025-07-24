@@ -1,5 +1,9 @@
 def create_svg_html_content(
-    svg_path: str, max_height: int = 800, input: str = None, output: str = None
+    svg_path: str,
+    max_height: int = 800,
+    input: str = None,
+    output: str = None,
+    is_correct: bool = None,
 ) -> str:
     """
     SVG 画像と入出力テキストを含む HTML コンテンツを生成する関数.
@@ -9,6 +13,7 @@ def create_svg_html_content(
         max_height (int): 最大高さ.
         input (str): 入力テキスト (SVG 画像の下に表示).
         output (str): 出力テキスト (SVG 画像の上に表示).
+        is_correct (bool): 出力が正しいかどうか (True: 正解/緑色, False: 不正解/赤色, None: デフォルト).
 
     Returns:
         str: HTML コンテンツの文字列.
@@ -16,6 +21,17 @@ def create_svg_html_content(
     # SVG ファイルを読み込み
     with open(svg_path, "r", encoding="utf-8") as f:
         svg_content = f.read()
+
+    # 出力テキストの色とアイコンを決定
+    if is_correct is None:
+        output_color = "white"
+        output_icon = ""
+    elif is_correct:
+        output_color = "#4CAF50"  # 緑色
+        output_icon = "✅ "
+    else:
+        output_color = "#F44336"  # 赤色
+        output_icon = "❌ "
 
     # HTML コンテンツ
     html_content = f"""
@@ -36,7 +52,7 @@ def create_svg_html_content(
         <div style="
             width: 100%;
             text-align: center;
-            color: white;
+            color: {output_color};
             font-weight: bold;
             font-size: 16px;
             padding: 5px 0;
@@ -45,7 +61,7 @@ def create_svg_html_content(
             margin-bottom: 10px;
             {"display: block;" if output else "display: none;"}
         ">
-            出力：{output if output else ""}
+            出力：{output_icon}{output if output else ""}
         </div>
 
         <!-- SVG 画像 (中央) -->
