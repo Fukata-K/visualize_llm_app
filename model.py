@@ -2,6 +2,7 @@ import base64
 import os
 from pathlib import Path
 
+import numpy as np
 import pygraphviz as pgv
 import torch
 from transformer_lens import ActivationCache, HookedTransformer
@@ -49,6 +50,7 @@ def visualize_model(
     filename: str = "figures/graph.svg",
     fillcolors: dict[str, str] = None,
     use_urls: bool = False,
+    object_ranks: dict[str, int] = None,
     base_width: float = 1.5,
     base_height: float = 0.6,
     base_fontsize: float = 24,
@@ -63,6 +65,7 @@ def visualize_model(
         filename (str): 出力ファイル名. デフォルトは "figures/graph.svg".
         fillcolors (dict[str, str]): ノードの名前と色のマッピング. デフォルトは None.
         use_urls (bool): ノードに URL を使用するかどうか. デフォルトは False.
+        object_ranks (dict[str, int]): 各ノードのオブジェクトの順位を示す辞書. デフォルトは None.
         base_width (float): ノードの基本幅.
         base_height (float): ノードの基本高さ.
         base_fontsize (float): ノードの基本フォントサイズ.
@@ -85,13 +88,40 @@ def visualize_model(
     edge_list = _create_edge_list(model)
 
     # デフォルト値の設定
+    vocab_size = model.cfg.d_vocab
+    valid_rank = vocab_size // 10
+    colors = {}
+    for node in node_list:
+        colors[node] = (
+            _get_color_from_rank(object_ranks.get(node, vocab_size), valid_rank)
+            if object_ranks
+            else "#FFFFFF"
+        )
     if fillcolors is None:
         color_map = {
             "a": "#FF7777",  # light red for attention nodes
             "m": "#77FF77",  # light green for MLP nodes
             "o": "#FF7700",  # gold for output nodes
         }
-        fillcolors = {node: (color_map.get(node[0], "#808080")) for node in node_list}
+        if object_ranks is None:
+            fillcolors = {
+                node: (color_map.get(node[0], "#808080")) for node in node_list
+            }
+        else:
+            fillcolors = {}
+            for node in node_list:
+                if node.startswith("a"):
+                    fillcolors[node] = color_map.get(node[0], "#808080")
+                elif node.startswith("m"):
+                    fillcolors[node] = _get_color_from_rank(
+                        object_ranks.get(node, vocab_size), valid_rank
+                    )
+                elif node == "output":
+                    fillcolors[node] = _get_color_from_rank(
+                        object_ranks.get(node, vocab_size), valid_rank
+                    )
+                else:
+                    fillcolors[node] = "#808080"
     if use_urls:
         urls = _get_url_dict(model)
     else:
@@ -99,12 +129,13 @@ def visualize_model(
 
     # ノードを追加
     for node in node_list:
+        color = colors.get(node, "#FFFFFF")
         fillcolor = fillcolors.get(node, "#FFFFFF")
         url = urls.get(node, "")
         pos = _get_node_position(model, node, base_width, base_height)
         graph.add_node(
             node,
-            color="#FFFFFF",
+            color=color,
             fillcolor=fillcolor,
             fontname="Helvetica",
             fontsize=base_fontsize,
@@ -120,13 +151,45 @@ def visualize_model(
 
     # エッジを追加
     for edge in edge_list:
-        graph.add_edge(edge[0], edge[1], penwidth=edge_width, color="#FFFFFF")
+        if object_ranks is None:
+            graph.add_edge(edge[0], edge[1], penwidth=edge_width, color="#FFFFFF")
+        else:
+            rank = object_ranks.get(edge[0], vocab_size)
+            color = _get_color_from_rank(rank, valid_rank)
+            graph.add_edge(edge[0], edge[1], penwidth=edge_width, color=color)
 
     # グラフを描画して保存
     filename = Path(filename)
     filename.parent.mkdir(parents=True, exist_ok=True)
     graph.layout(prog="neato")
     graph.draw(filename, format="svg")
+
+
+def _get_color_from_rank(rank: int, rank_threshold: int) -> str:
+    """
+    target の rank に基づいて色を計算するヘルパー関数.
+    順位が閾値以上 (数値が大きい) であれば白色, それ以外は順位が良い (数値が小さい) ほど緑色, 悪い (数値が大きい) ほど白色になる.
+
+    Args:
+        rank (int): target のランク
+        rank_threshold (int): 順位の閾値 (この値未満は白色になる)
+
+    Returns:
+        str: 16進カラーコード (例: "#A1B2C3")
+    """
+    # 順位が閾値以上であればで白色
+    if rank >= rank_threshold:
+        return "#FFFFFF"
+
+    log_rank = np.log(rank + 1e-8)
+    log_threshold = np.log(rank_threshold + 1e-8)
+    normalized_log_rank = log_rank / log_threshold if log_threshold > 0 else 0.0
+
+    # 順位が良いほど緑, 悪いほど白になるように調整
+    r = int(255 * normalized_log_rank)
+    g = 255
+    b = int(255 * normalized_log_rank)
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 def _get_url_dict(

@@ -5,7 +5,7 @@ from transformer_lens import HookedTransformer
 
 from attention_pattern import generate_attention_heatmaps
 from display_utils import create_svg_html_content
-from logits import save_all_logits_figures
+from logits import calculate_all_logits_object_rank, save_all_logits_figures
 from model import get_cache, get_output, visualize_model
 from prompt import check_answer_correctness, get_random_prompt
 
@@ -67,12 +67,23 @@ if run and prompt:
     # 一致チェック
     is_correct = check_answer_correctness(model, prompt, logits, expected_answer)
 
+    # 各層の logits からオブジェクトの順位を計算
+    object_ranks = calculate_all_logits_object_rank(
+        model=model,
+        cache=cache,
+        prompt=prompt,
+        object=expected_answer,
+    )
+    print(object_ranks)
+
     # 表示用のプレースホルダーを作成
     visualization_placeholder = st.empty()
 
     # 簡易版の HTML コンテンツを生成して表示 (後続の処理を待つ間に表示)
     init_path = "figures/graph_init.svg"
-    visualize_model(model, filename=init_path, use_urls=False)
+    visualize_model(
+        model, filename=init_path, use_urls=False, object_ranks=object_ranks
+    )
     max_height = 800
     margin = 20
     html_content_init = create_svg_html_content(
@@ -109,7 +120,9 @@ if run and prompt:
     # モデルの可視化
     start_time = time.time()
     output_path = "figures/model_visualization.svg"
-    visualize_model(model, filename=output_path, use_urls=True)
+    visualize_model(
+        model, filename=output_path, use_urls=True, object_ranks=object_ranks
+    )
     elapsed_time = time.time() - start_time
     print(f"モデルの可視化にかかった時間: {elapsed_time:.2f}秒")
 

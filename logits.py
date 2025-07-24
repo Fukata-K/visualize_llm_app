@@ -62,6 +62,75 @@ def _clean_token_text(text: str) -> str:
     return text
 
 
+def calculate_all_logits_object_rank(
+    model: HookedTransformer,
+    cache: Dict[str, torch.Tensor],
+    prompt: str,
+    object: str,
+) -> Dict[str, int]:
+    """
+    モデルの全ての構成要素の object の出力順位を計算する関数.
+
+    Args:
+        model (HookedTransformer): 分析対象の HookedTransformer モデル.
+        cache (Dict[str, torch.Tensor]): モデル実行時のアクティベーションキャッシュ.
+        prompt (str): モデルに入力されたプロンプト.
+        object (str): 出力順位を計算する対象のトークン.
+
+    Returns:
+        Dict[str, int]: ノード名をキー, object の順位を値とする辞書.
+    """
+    layer_logits, head_logits = _compute_all_components_logits(model, cache)
+
+    # オブジェクトのトークン ID を取得 (文脈を考慮した2パターン)
+    full_text_with_space = prompt + " " + object
+    full_text_without_space = prompt + object
+
+    prompt_tokens = model.to_tokens(prompt, prepend_bos=False)[0]
+    prompt_length = len(prompt_tokens)
+
+    # スペース有り/無しでのトークン化
+    full_tokens_with_space = model.to_tokens(full_text_with_space, prepend_bos=False)[0]
+    full_tokens_without_space = model.to_tokens(
+        full_text_without_space, prepend_bos=False
+    )[0]
+
+    # オブジェクトの最初のトークン ID を取得
+    object_token_id = None
+    if len(full_tokens_with_space) > prompt_length:
+        object_token_id = full_tokens_with_space[prompt_length].item()
+    elif len(full_tokens_without_space) > prompt_length:
+        object_token_id = full_tokens_without_space[prompt_length].item()
+
+    if object_token_id is None:
+        # オブジェクトが見つからない場合は空の辞書を返す
+        return {}
+
+    ranks = {}
+
+    # 各層の logits からオブジェクトの順位を計算
+    n_layers = model.cfg.n_layers
+    n_heads = model.cfg.n_heads
+    ranks["input"] = model.cfg.d_vocab  # Input ノードの順位は vocab サイズ
+    for layer_idx in range(n_layers):
+        layer_logit = layer_logits[layer_idx]
+        # 降順でソートしてオブジェクトの順位を取得
+        sorted_indices = torch.argsort(layer_logit, descending=True)
+        rank = (sorted_indices == object_token_id).nonzero(as_tuple=True)[0].item() + 1
+        ranks[f"m{layer_idx}"] = rank
+
+        # 各ヘッドの logits からオブジェクトの順位を計算
+        for head_idx in range(n_heads):
+            head_logit = head_logits[layer_idx, head_idx]
+            sorted_indices = torch.argsort(head_logit, descending=True)
+            rank = (sorted_indices == object_token_id).nonzero(as_tuple=True)[0]
+            rank = rank.item() + 1
+            ranks[f"a{layer_idx}.h{head_idx}"] = rank
+    ranks["output"] = ranks[f"m{n_layers - 1}"]  # Output ノードの順位は最終層の出力
+
+    return ranks
+
+
 def save_all_logits_figures(
     model: HookedTransformer,
     cache: Dict[str, torch.Tensor],
