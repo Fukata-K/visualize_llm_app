@@ -209,4 +209,5 @@ __marimo__/
 .DS_Store
 
 # Others
-figures/
+figures/*
+!figures/samples/
