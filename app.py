@@ -91,7 +91,7 @@ if run and prompt:
     visualization_placeholder = st.empty()
 
     # 簡易版の HTML コンテンツを生成して表示 (後続の処理を待つ間に表示)
-    init_path = "figures/graph_init.svg"
+    init_path = "figures/graphs/graph_init.svg"
     visualize_model(
         model, filename=init_path, use_urls=False, object_ranks=object_ranks
     )
@@ -107,6 +107,9 @@ if run and prompt:
 
     # プレースホルダーに簡易版を表示
     with visualization_placeholder.container():
+        st.info(
+            "⏳ 可視化を生成中です... 約30秒ほど待つとノードをクリックして詳細情報を閲覧できるようになります"
+        )
         st.components.v1.html(
             html_content_init, height=max_height + margin, scrolling=False
         )
@@ -123,7 +126,7 @@ if run and prompt:
     save_all_logits_figures(model, cache)
 
     # モデルの可視化
-    output_path = "figures/model_visualization.svg"
+    output_path = "figures/graphs/graph.svg"
     visualize_model(
         model, filename=output_path, use_urls=True, object_ranks=object_ranks
     )
@@ -139,6 +142,9 @@ if run and prompt:
 
     # プレースホルダーに完全版を表示 (簡易版を上書き)
     with visualization_placeholder.container():
+        st.success(
+            "✅ 可視化が完了しました！ノードをクリックして詳細情報を閲覧できます"
+        )
         st.components.v1.html(
             html_content_final, height=max_height + margin, scrolling=False
         )

@@ -261,7 +261,7 @@ def _get_node_position(
     n_heads = model.cfg.n_heads
 
     if node_name == "Input":
-        return (0, 0)  # Input を基準点とする
+        return (0, -y_spacing)
 
     elif node_name.startswith("A"):
         layer = int(node_name[1:].split(".")[0])
