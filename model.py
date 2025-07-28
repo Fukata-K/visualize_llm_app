@@ -213,17 +213,17 @@ def _get_url_dict(
             attention_b64 = _image_to_base64(attention_path)
             logits_b64 = _image_to_base64(logits_path)
             url_dict[node] = (
-                f"javascript:showDualImages('{attention_b64}', '{logits_b64}', 'Attention Pattern', 'Logits')"
+                f"javascript:showDualImages('{attention_b64}', '{logits_b64}', '注意パターン', '予測ランキング')"
             )
         elif node.startswith("MLP"):
             layer = int(node[3:])
             logits_path = f"figures/logits/L{layer:02d}.png"
             logits_b64 = _image_to_base64(logits_path)
-            url_dict[node] = f"javascript:showImage('{logits_b64}')"
+            url_dict[node] = f"javascript:showImage('{logits_b64}', '予測ランキング')"
         elif node == "Output":
             logits_path = f"figures/logits/L{model.cfg.n_layers - 1:02d}.png"
             logits_b64 = _image_to_base64(logits_path)
-            url_dict[node] = f"javascript:showImage('{logits_b64}')"
+            url_dict[node] = f"javascript:showImage('{logits_b64}', '予測ランキング')"
         else:
             url_dict[node] = ""
     return url_dict

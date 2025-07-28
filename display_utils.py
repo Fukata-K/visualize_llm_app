@@ -61,7 +61,7 @@ def create_svg_html_content(
             margin-bottom: 10px;
             {"display: block;" if output else "display: none;"}
         ">
-            出力：{output_icon}{output if output else ""}
+            AI の予測：{output_icon}{output if output else ""}
         </div>
 
         <!-- SVG 画像 (中央) -->
@@ -112,7 +112,7 @@ def create_svg_html_content(
     </style>
 
     <script>
-    function showImage(imageB64) {{
+    function showImage(imageB64, title) {{
         console.log('showImage called with data:', imageB64 ? 'available' : 'none');
         const modal = document.getElementById('imageModal');
         const modalContainer = modal.querySelector('div');
@@ -128,8 +128,19 @@ def create_svg_html_content(
                 max-width: 90%;
                 max-height: 90%;
                 display: flex;
+                flex-direction: column;
                 justify-content: center;
                 align-items: center;
+            `;
+
+            // タイトルを追加
+            const titleElement = document.createElement('h3');
+            titleElement.textContent = title;
+            titleElement.style.cssText = `
+                color: white;
+                margin: 0 0 10px 0;
+                font-size: 16px;
+                text-align: center;
             `;
 
             // 画像要素を作成
@@ -160,6 +171,7 @@ def create_svg_html_content(
                 font-size: 16px;
             `;
 
+            imageContainer.appendChild(titleElement);
             imageContainer.appendChild(modalImage);
             imageContainer.appendChild(closeButton);
             modalContainer.appendChild(imageContainer);
