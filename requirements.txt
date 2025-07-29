@@ -3,3 +3,5 @@ matplotlib==3.10.3
 torch==2.7.1
 transformer-lens==2.16.1
 pygraphviz==1.14
+datasets==2.18.0
+pyarrow==14.0.2
