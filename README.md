@@ -32,7 +32,7 @@ cd visualize_llm_app
 ### 2. Conda 環境の作成
 
 ```bash
-conda env create -f environment.yml
+conda env create -f environment_local.yml
 conda activate visualize_llm
 ```
 
@@ -98,13 +98,20 @@ export LDFLAGS="-L$(brew --prefix graphviz)/lib"
 ├── logits.py                # logit 関連の処理
 ├── model.py                 # モデルのロードとキャッシュ
 ├── prompt.py                # プロンプト処理とランダム選択
-├── environment.yml          # Conda 環境定義ファイル
 ├── data/
-│   └── prompt_sample.csv    # ランダム選択用のプロンプトと回答
+│ ├── prompt_sample.csv      # ランダム選択用のプロンプトと回答
+│ └── README.md              # データセットの説明
+├── docs/
+│ ├── staff_demo_guide.pdf   # 運営用ガイド
+│ └── visitor_demo_guide.pdf # 来場者向けガイド
 ├── figures/                 # 各種可視化画像を出力（自動生成）
-│   ├── attention_patterns/
-│   ├── graphs/
-│   └── logits/
+│ ├── attention_patterns/
+│ ├── graphs/
+│ ├── logits/
+│ └── samples/
+├── environment_local.yml    # Conda 用のローカル環境定義
+├── packages.txt             # system dependencies（pygraphviz 用）
+├── requirements.txt         # Streamlit Cloud 用パッケージ定義
 └── README.md                # 本ファイル
 ```
 
