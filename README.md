@@ -14,6 +14,12 @@
   <img src="figures/samples/logits_sample.png" width="35%" alt="Logits の可視化">
 </p>
 
+## 🌐 デモサイト
+
+以下の URL からアプリをブラウザ上で直接体験できます：
+
+🔗 [https://fukata-k-visualize-llm-app-app-j0bqwd.streamlit.app/](https://fukata-k-visualize-llm-app-app-j0bqwd.streamlit.app/)
+
 ## 🔍 主な機能
 
 - 任意のプロンプト入力に対する LLM の出力可視化
