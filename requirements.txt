@@ -1,0 +1,5 @@
+streamlit==1.46.1
+matplotlib==3.10.3
+torch==2.7.1
+transformer-lens==2.16.1
+pygraphviz==1.14
